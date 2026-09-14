@@ -164,10 +164,10 @@ if run:
     fig, ax = plt.subplots(figsize=(14, 6), dpi=120)
     for xs, ys, final_bal in all_runs:
         color = PROFIT_COLOR if final_bal > starting_balance else LOSS_COLOR
-        ax.plot(xs, ys, linewidth=0.7, alpha=0.45, color=color)
+        ax.plot(xs, ys, linewidth=1.6, alpha=0.45, color=color)
 
     ax.axhline(starting_balance, color=BASELINE, linestyle="--",
-               linewidth=1.2, label="Starting balance", alpha=0.9)
+               linewidth=1.5, label="Starting balance", alpha=0.9)
     ax.set_xlabel("Number of Bet")
     ax.set_ylabel("Balance")
     ax.set_title("Balance trajectories across simulations")
@@ -210,6 +210,52 @@ if run:
     ax2.legend(loc="best", frameon=True)
     fig2.tight_layout()
     st.pyplot(fig2, clear_figure=True)
+
+    # ---------------- Win probability vs. tiles opened (full width) ----------------
+    st.subheader("Win probability vs. tiles opened")
+
+    def hypergeometric_pmf(k, N, K, n):
+        if k < 0 or k > K or n < 0 or n > N:
+            return 0.0
+        from math import comb
+        return (comb(K, k) * comb(N - K, n - k)) / comb(N, n)
+
+    N = total_tiles
+    K = int(n_mines)
+    Xs = list(range(1, N - K + 1))
+    Ys = [hypergeometric_pmf(0, N, K, i) for i in Xs]
+
+    win_cmap = mcolors.LinearSegmentedColormap.from_list("win_prob", [LOSS_COLOR, PROFIT_COLOR])
+    bar_colors = [win_cmap(y) for y in Ys]
+
+    fig3, ax3 = plt.subplots(figsize=(14, 5.5), dpi=120)
+    bars = ax3.bar(Xs, Ys, color=bar_colors, edgecolor="#0e1117", linewidth=0.6)
+
+    selected = int(opened)
+    if 1 <= selected <= len(Xs):
+        bars[selected - 1].set_edgecolor(ACCENT)
+        bars[selected - 1].set_linewidth(2.2)
+
+    from matplotlib.ticker import MaxNLocator
+    ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax3.set_xlabel("# of tiles opened")
+    ax3.set_ylabel("Probability of winning")
+    ax3.set_title("Win probability by number of tiles revealed")
+    ax3.set_ylim(0, 1)
+    ax3.grid(True, axis="y")
+    ax3.spines["top"].set_visible(False)
+    ax3.spines["right"].set_visible(False)
+
+    legend_items = [
+        Line2D([0], [0], marker="s", color="none", markerfacecolor=PROFIT_COLOR,
+               markersize=10, label="Higher win probability"),
+        Line2D([0], [0], marker="s", color="none", markerfacecolor=LOSS_COLOR,
+               markersize=10, label="Lower win probability"),
+        Line2D([0], [0], color=ACCENT, lw=2.2, label=f"Your setting ({selected})"),
+    ]
+    ax3.legend(handles=legend_items, loc="best", frameon=True)
+    fig3.tight_layout()
+    st.pyplot(fig3, clear_figure=True)
 else:
     st.info("Set your parameters in the sidebar, then click **Run simulation**.")
 
