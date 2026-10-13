@@ -159,15 +159,22 @@ if run:
     c3.metric("In loss",           f"{pct_loss:.1f}%")
     c4.metric("Avg final balance", f"{np.mean(final_balances):.2f}")
 
-    # ---------------- Balance over time (full width) ----------------
+    # ---------------- Balance over time + final distribution (full width) ----------------
+    from matplotlib.lines import Line2D
+
     st.subheader("Balance trajectories")
-    fig, ax = plt.subplots(figsize=(14, 6), dpi=120)
+    fig, (ax, axh) = plt.subplots(
+        1, 2, figsize=(14, 6), dpi=120, sharey=True,
+        gridspec_kw={"width_ratios": [5, 1]},
+    )
+
+    # left: trajectories
     for xs, ys, final_bal in all_runs:
         color = PROFIT_COLOR if final_bal > starting_balance else LOSS_COLOR
         ax.plot(xs, ys, linewidth=1.6, alpha=0.45, color=color)
 
     ax.axhline(starting_balance, color=BASELINE, linestyle="--",
-               linewidth=1.5, label="Starting balance", alpha=0.9)
+               linewidth=1.5, alpha=0.9)
     ax.set_xlabel("Number of Bet")
     ax.set_ylabel("Balance")
     ax.set_title("Balance trajectories across simulations")
@@ -175,14 +182,36 @@ if run:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    from matplotlib.lines import Line2D
+    # right: final balance distribution (shares the balance y-axis)
+    final_arr_h = np.array(final_balances)
+    mean_final = float(np.mean(final_arr_h))
+    _, bins_h, patches_h = axh.hist(
+        final_arr_h, bins=40, orientation="horizontal",
+        edgecolor="#0e1117", linewidth=0.6,
+    )
+    for patch, lo, hi in zip(patches_h, bins_h[:-1], bins_h[1:]):
+        patch.set_facecolor(PROFIT_COLOR if (lo + hi) / 2 > starting_balance else LOSS_COLOR)
+        patch.set_alpha(0.9)
+
+    axh.axhline(starting_balance, color=BASELINE, linestyle="--", linewidth=1.5, alpha=0.9)
+    axh.axhline(mean_final, color=ACCENT, linestyle="-", linewidth=1.5)
+    axh.set_xlabel("Simulations")
+    axh.set_title("Final balance")
+    axh.grid(True, axis="x")
+    axh.tick_params(left=False)
+    axh.spines["top"].set_visible(False)
+    axh.spines["right"].set_visible(False)
+
     legend_items = [
         Line2D([0], [0], color=PROFIT_COLOR, lw=2, label="Profit"),
         Line2D([0], [0], color=LOSS_COLOR,   lw=2, label="Loss"),
         Line2D([0], [0], color=BASELINE, lw=1.2, linestyle="--", label="Starting balance"),
+        Line2D([0], [0], color=ACCENT,   lw=1.5, label=f"Mean ({mean_final:.0f})"),
     ]
     ax.legend(handles=legend_items, loc="best", frameon=True)
+
     fig.tight_layout()
+    fig.subplots_adjust(wspace=0.03)
     st.pyplot(fig, clear_figure=True)
 
     # ---------------- Final balance distribution (full width) ----------------
@@ -256,7 +285,6 @@ if run:
     ax3.legend(handles=legend_items, loc="best", frameon=True)
     fig3.tight_layout()
     st.pyplot(fig3, clear_figure=True)
+
 else:
     st.info("Set your parameters in the sidebar, then click **Run simulation**.")
-
-
